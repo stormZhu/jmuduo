@@ -17,5 +17,5 @@ mkdir -p $BUILD_DIR/$BUILD_TYPE \
            $SOURCE_DIR \
   && make $*
 
-cd $SOURCE_DIR && doxygen
+#cd $SOURCE_DIR && doxygen
 
