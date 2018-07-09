@@ -5,10 +5,10 @@
 
 #include <muduo/base/Exception.h>
 
-//#include <cxxabi.h>
+#include <cxxabi.h>
 #include <execinfo.h>
 #include <stdlib.h>
-
+#include <stdio.h>
 using namespace muduo;
 
 Exception::Exception(const char* msg)
@@ -48,10 +48,32 @@ void Exception::fillStackTrace()
     for (int i = 0; i < nptrs; ++i)
     {
       // TODO demangle funcion name with abi::__cxa_demangle
-      stack_.append(strings[i]);
+      // stack_.append(strings[i]);
+      stack_.append(demangle(strings[i]));
       stack_.push_back('\n');
     }
     free(strings);
   }
 }
 
+string Exception::demangle(const char* symbol)      
+{                                                   
+    size_t size;                                    
+    int status;                                     
+    char temp[128];                                 
+    char *demangled;                                
+    // first, try to demangle a c++ name            
+    if(1 == sscanf(symbol, "%*[^(]%*[^_]%127[^)+]",temp)) {
+        if(NULL != (demangled = abi::__cxa_demangle(temp, NULL, &size, &status))) {
+            string result(demangled);
+            free(demangled);
+            return result;
+        }
+    }                     
+    // if that didn't work. try to get a regular c symbol
+    if (1 == sscanf(symbol, "%127s", temp)){
+        return temp;
+    }               
+    // if all else fails, just return the symbol
+    return symbol;           
+}                                                   
