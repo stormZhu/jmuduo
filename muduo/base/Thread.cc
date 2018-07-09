@@ -6,7 +6,7 @@
 #include <muduo/base/Thread.h>
 #include <muduo/base/CurrentThread.h>
 #include <muduo/base/Exception.h>
-#include <muduo/base/Logging.h>
+//#include <muduo/base/Logging.h>
 
 #include <boost/static_assert.hpp>
 #include <boost/type_traits/is_same.hpp>
@@ -101,7 +101,7 @@ void Thread::start()
   errno = pthread_create(&pthreadId_, NULL, &startThread, this);
   if (errno != 0)
   {
-    LOG_SYSFATAL << "Failed in pthread_create";
+   // LOG_SYSFATAL << "Failed in pthread_create";
   }
 }
 
