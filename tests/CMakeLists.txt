@@ -1,1 +1,3 @@
 add_executable(boost_assert_test boost_assert_test.cc)
+add_executable(pthread_atfork_test Pthread_atfork_test.cc)
+target_link_libraries(pthread_atfork_test pthread)
