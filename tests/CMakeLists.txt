@@ -1,0 +1,1 @@
+add_executable(boost_assert_test boost_assert_test.cc)
