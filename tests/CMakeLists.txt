@@ -1,5 +1,10 @@
 add_executable(boost_assert_test boost_assert_test.cc)
 
+add_executable(countdownlatch_test1 CountDownLatch_test1.cc)
+target_link_libraries(countdownlatch_test1 muduo_base)
+
+add_executable(countdownlatch_test2 CountDownLatch_test2.cc)
+target_link_libraries(countdownlatch_test2 muduo_base)
 
 add_executable(deadlock_test Deadlock_test.cc)
 
