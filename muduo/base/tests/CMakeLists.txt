@@ -19,6 +19,9 @@ target_link_libraries(mutex_test muduo_base)
 add_executable(thread_test Thread_test.cc)
 target_link_libraries(thread_test muduo_base)
 
+add_executable(threadpool_test ThreadPool_test.cc)
+target_link_libraries(threadpool_test muduo_base)
+
 add_executable(timestamp_unittest Timestamp_unittest.cc)
 target_link_libraries(timestamp_unittest muduo_base)
 
