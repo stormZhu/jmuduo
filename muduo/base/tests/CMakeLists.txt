@@ -16,6 +16,9 @@ add_executable(atomic_unittest Atomic_unittest.cc)
 add_executable(mutex_test Mutex_test.cc)
 target_link_libraries(mutex_test muduo_base)
 
+add_executable(singleton_test Singleton_test.cc)
+target_link_libraries(singleton_test muduo_base)
+
 add_executable(thread_test Thread_test.cc)
 target_link_libraries(thread_test muduo_base)
 
