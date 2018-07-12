@@ -13,6 +13,14 @@ target_link_libraries(exception_test muduo_base)
 add_executable(atomic_unittest Atomic_unittest.cc)
 #target_link_libraries(atomic_unittest muduo_base)
 
+add_executable(logstream_bench LogStream_bench.cc)
+target_link_libraries(logstream_bench muduo_base)
+
+if(BOOSTTEST_LIBRARY)
+add_executable(logstream_test LogStream_test.cc)
+target_link_libraries(logstream_test muduo_base boost_unit_test_framework)
+endif()
+
 add_executable(mutex_test Mutex_test.cc)
 target_link_libraries(mutex_test muduo_base)
 
