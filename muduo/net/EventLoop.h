@@ -11,15 +11,21 @@
 #ifndef MUDUO_NET_EVENTLOOP_H
 #define MUDUO_NET_EVENTLOOP_H
 
+#include <vector>
+
 #include <boost/noncopyable.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include <muduo/base/CurrentThread.h>
 #include <muduo/base/Thread.h>
+#include <muduo/base/Timestamp.h>
 
 namespace muduo
 {
 namespace net
 {
+class Channel;
+class Poller;
 
 ///
 /// Reactor, at most one per thread.
@@ -38,6 +44,17 @@ class EventLoop : boost::noncopyable
   ///
   void loop();
 
+  void quit();
+
+  ///
+  /// Time when poll returns, usually means data arrivial.
+  ///
+  Timestamp pollReturnTime() const { return pollReturnTime_; }
+
+  // internal usage
+  void updateChannel(Channel* channel); //在Poller中添加或者更新通道
+  void removeChannel(Channel* channel); // 从Poller中移除通道
+
   void assertInLoopThread()
   {
     if (!isInLoopThread())
@@ -52,8 +69,18 @@ class EventLoop : boost::noncopyable
  private:
   void abortNotInLoopThread();
 
+  void printActiveChannels() const; // DEBUG
+
+  typedef std::vector<Channel*> ChannelList;
+
   bool looping_; /* atomic */
+  bool quit_; /* atomic */
+  bool eventHandling_; /* atomic */
   const pid_t threadId_; // 当前对象所属线程ID
+  Timestamp pollReturnTime_;
+  boost::scoped_ptr<Poller> poller_;
+  ChannelList activeChannels_;    // Poller返回的活动通道
+  Channel* currentActiveChannel_; // 当前正在处理的活动通道
 };
 
 }

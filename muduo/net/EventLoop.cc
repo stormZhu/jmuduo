@@ -9,8 +9,9 @@
 #include <muduo/net/EventLoop.h>
 
 #include <muduo/base/Logging.h>
+#include <muduo/net/Channel.h>
+#include <muduo/net/Poller.h>
 
-#include <poll.h>
 
 using namespace muduo;
 using namespace muduo::net;
@@ -20,6 +21,9 @@ namespace
 // 当前线程EventLoop对象指针
 // 线程局部存储  每个线程都有这个独立的指针变量
 __thread EventLoop* t_loopInThisThread = 0;// 0 就是空指针
+
+const int kPollTimeMs = 10000;
+
 }
 
 EventLoop* EventLoop::getEventLoopOfCurrentThread()
@@ -54,15 +58,60 @@ EventLoop::~EventLoop()
 void EventLoop::loop()
 {
   assert(!looping_);
-  // 断言当前处于创建该对象的线程中
+  //断言当前处于创建该对象的线程中
   assertInLoopThread();
   looping_ = true;
+  quit_ = false;
   LOG_TRACE << "EventLoop " << this << " start looping";
-  
-  ::poll(NULL, 0, 5*1000); // 关注事件 0 , 超时时间 5s
+
+  while (!quit_)
+  {
+    activeChannels_.clear();
+    pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
+    //++iteration_;
+    if (Logger::logLevel() <= Logger::TRACE)
+    {
+      printActiveChannels();
+    }
+    // TODO sort channel by priority
+    eventHandling_ = true;
+    for (ChannelList::iterator it = activeChannels_.begin();
+        it != activeChannels_.end(); ++it)
+    {
+      currentActiveChannel_ = *it;
+      currentActiveChannel_->handleEvent(pollReturnTime_);
+    }
+    currentActiveChannel_ = NULL;
+    eventHandling_ = false;
+  }
 
   LOG_TRACE << "EventLoop " << this << " stop looping";
   looping_ = false;
+}
+
+void EventLoop::quit()
+{
+  quit_ = true;
+}
+
+
+void EventLoop::updateChannel(Channel* channel)
+{
+  assert(channel->ownerLoop() == this);
+  assertInLoopThread();
+  poller_->updateChannel(channel);
+}
+
+void EventLoop::removeChannel(Channel* channel)
+{
+  assert(channel->ownerLoop() == this);
+  assertInLoopThread();
+  if (eventHandling_)
+  {
+    assert(currentActiveChannel_ == channel ||
+        std::find(activeChannels_.begin(), activeChannels_.end(), channel) == activeChannels_.end());
+  }
+  poller_->removeChannel(channel);
 }
 
 void EventLoop::abortNotInLoopThread()
@@ -72,3 +121,13 @@ void EventLoop::abortNotInLoopThread()
             << ", current thread id = " <<  CurrentThread::tid();
 }
 
+
+void EventLoop::printActiveChannels() const
+{
+  for (ChannelList::const_iterator it = activeChannels_.begin();
+      it != activeChannels_.end(); ++it)
+  {
+    const Channel* ch = *it;
+    LOG_TRACE << "{" << ch->reventsToString() << "} ";
+  }
+}

@@ -1,5 +1,10 @@
 set(net_SRCS
+  Channel.cc
   EventLoop.cc
+  Poller.cc
+  poller/DefaultPoller.cc
+  poller/EPollPoller.cc
+  poller/PollPoller.cc
   )
 
 add_library(muduo_net ${net_SRCS})
@@ -7,6 +12,7 @@ target_link_libraries(muduo_net muduo_base)
 
 install(TARGETS muduo_net DESTINATION lib)
 set(HEADERS
+  Channel.h
   EventLoop.h
   )
 install(FILES ${HEADERS} DESTINATION include/muduo/net)
