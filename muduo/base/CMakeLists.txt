@@ -3,7 +3,10 @@ set(base_SRCS
   CountDownLatch.cc
   Exception.cc
   Logging.cc
+  LogFile.cc
   LogStream.cc
+  ProcessInfo.cc
+  FileUtil.cc
   Thread.cc
   ThreadPool.cc
   Timestamp.cc
