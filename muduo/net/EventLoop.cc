@@ -33,7 +33,12 @@ EventLoop* EventLoop::getEventLoopOfCurrentThread()
 
 EventLoop::EventLoop()
   : looping_(false),
-    threadId_(CurrentThread::tid())
+    quit_(false),
+    eventHandling_(false),
+    threadId_(CurrentThread::tid()),
+    poller_(Poller::newDefaultPoller(this)),
+    currentActiveChannel_(NULL)
+
 {
   LOG_TRACE << "EventLoop created " << this << " in thread " << threadId_;
   // 如果当前线程已经创建过 EventLoop对象，则终止 （LOG_FATAL）
