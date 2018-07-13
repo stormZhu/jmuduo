@@ -15,11 +15,11 @@ int timerfd;
 void timeout(Timestamp receiveTime)
 {
     printf("Timeout!\n");
-    //uint64_t howmany;
+    uint64_t howmany;
     // 应该不会阻塞吧，因为在能读的时候才调用这个函数
-    // 并且必须度，不读的话会一直触发 读 的事件
+    // 并且必须读，不读的话会一直触发 读 的事件
     // muduo库内部的epool使用电平触发 LT
-    //::read(timerfd, &howmany, sizeof(howmany)); 
+    ::read(timerfd, &howmany, sizeof(howmany)); 
 }
 
 int main(void)

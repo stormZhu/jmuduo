@@ -94,9 +94,19 @@ void EventLoop::loop()
   looping_ = false;
 }
 
+// 该线程可以跨线程调用
+// 其他线程调用quit的时候，IO线程可能还阻塞在poller_->poll（为什么不设置超时时间）
+// 没有办法退出，所以需要唤醒
+// 如果是创建EventLoop的线程自己quit， 不需要唤醒吗?
 void EventLoop::quit()
 {
-  quit_ = true;
+  quit_ = true; // 虽然可能跨线程访问，但是不需要保护，因为bool类型在linux下是原子类型！
+  if (!isInLoopThread())
+  {
+    // 设置一个管道，poller_->poll多监听一个文件描述符
+    // 更好的办法， 使用eventfd
+    //wakeup();
+  }
 }
 
 
