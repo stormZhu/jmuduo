@@ -9,18 +9,23 @@
 #include <muduo/net/EventLoop.h>
 
 #include <muduo/base/Logging.h>
+#include <muduo/base/Mutex.h>
+#include <muduo/base/Singleton.h>
 #include <muduo/net/Channel.h>
 #include <muduo/net/Poller.h>
+#include <muduo/net/TimerQueue.h>
 
+#include <boost/bind.hpp>
+
+#include <signal.h>
+#include <sys/eventfd.h>
 
 using namespace muduo;
 using namespace muduo::net;
 
 namespace
 {
-// 当前线程EventLoop对象指针
-// 线程局部存储  每个线程都有这个独立的指针变量
-__thread EventLoop* t_loopInThisThread = 0;// 0 就是空指针
+__thread EventLoop* t_loopInThisThread = 0;
 
 const int kPollTimeMs = 10000;
 
@@ -37,33 +42,30 @@ EventLoop::EventLoop()
     eventHandling_(false),
     threadId_(CurrentThread::tid()),
     poller_(Poller::newDefaultPoller(this)),
+    timerQueue_(new TimerQueue(this)),
     currentActiveChannel_(NULL)
-
 {
   LOG_TRACE << "EventLoop created " << this << " in thread " << threadId_;
-  // 如果当前线程已经创建过 EventLoop对象，则终止 （LOG_FATAL）
-  if (t_loopInThisThread) 
+  if (t_loopInThisThread)
   {
     LOG_FATAL << "Another EventLoop " << t_loopInThisThread
               << " exists in this thread " << threadId_;
   }
   else
   {
-    t_loopInThisThread = this; //创建线程的时候， 将t_loopInThisThread指针赋值为当前线程
+    t_loopInThisThread = this;
   }
 }
 
 EventLoop::~EventLoop()
 {
-  t_loopInThisThread = NULL; // 将这个变量置为空
+  //::close(wakeupFd_);
+  t_loopInThisThread = NULL;
 }
 
-// 事件循环 该函数不能跨线程调用 
-// 只能在创建该对象的线程中调用
 void EventLoop::loop()
 {
   assert(!looping_);
-  //断言当前处于创建该对象的线程中
   assertInLoopThread();
   looping_ = true;
   quit_ = false;
@@ -88,27 +90,44 @@ void EventLoop::loop()
     }
     currentActiveChannel_ = NULL;
     eventHandling_ = false;
+    //doPendingFunctors();
   }
 
   LOG_TRACE << "EventLoop " << this << " stop looping";
   looping_ = false;
 }
 
-// 该线程可以跨线程调用
-// 其他线程调用quit的时候，IO线程可能还阻塞在poller_->poll（为什么不设置超时时间）
-// 没有办法退出，所以需要唤醒
-// 如果是创建EventLoop的线程自己quit， 不需要唤醒吗?
 void EventLoop::quit()
 {
-  quit_ = true; // 虽然可能跨线程访问，但是不需要保护，因为bool类型在linux下是原子类型！
+  quit_ = true;
   if (!isInLoopThread())
   {
-    // 设置一个管道，poller_->poll多监听一个文件描述符
-    // 更好的办法， 使用eventfd
     //wakeup();
   }
 }
 
+//在某个时刻调用回调函数，也就是在事件队列中放入一个Timer!
+TimerId EventLoop::runAt(const Timestamp& time, const TimerCallback& cb)
+{
+  return timerQueue_->addTimer(cb, time, 0.0);
+}
+
+TimerId EventLoop::runAfter(double delay, const TimerCallback& cb)
+{
+  Timestamp time(addTime(Timestamp::now(), delay));
+  return runAt(time, cb);
+}
+
+TimerId EventLoop::runEvery(double interval, const TimerCallback& cb)
+{
+  Timestamp time(addTime(Timestamp::now(), interval));
+  return timerQueue_->addTimer(cb, time, interval);
+}
+
+void EventLoop::cancel(TimerId timerId)
+{
+  return timerQueue_->cancel(timerId);
+}
 
 void EventLoop::updateChannel(Channel* channel)
 {
@@ -136,7 +155,6 @@ void EventLoop::abortNotInLoopThread()
             << ", current thread id = " <<  CurrentThread::tid();
 }
 
-
 void EventLoop::printActiveChannels() const
 {
   for (ChannelList::const_iterator it = activeChannels_.begin();
@@ -146,3 +164,4 @@ void EventLoop::printActiveChannels() const
     LOG_TRACE << "{" << ch->reventsToString() << "} ";
   }
 }
+
